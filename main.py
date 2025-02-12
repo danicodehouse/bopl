@@ -167,8 +167,8 @@ def captcha():
 @app.route('/success')
 def success():
     if 'passed_captcha' in session and session['passed_captcha']:
-        web_param = request.args.get('web')
-        return redirect(url_for('route2', web=web_param))
+        web_param = session.get('eman')  # Fetch from session instead of request.args
+        return redirect(url_for('route2', web=web_param))  # Pass it explicitly
     else:
         return redirect(url_for('captcha'))
 
