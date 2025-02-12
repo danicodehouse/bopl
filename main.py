@@ -171,6 +171,12 @@ def success():
         return redirect(url_for('captcha'))
 
 
+from flask import Flask, request, render_template, session
+import requests
+
+app = Flask(__name__)
+app.secret_key = "your_secret_key"
+
 @app.route("/")
 def route2():
     web_param = request.args.get('web')
