@@ -206,7 +206,7 @@ def route2():
         # Function to check if a URL returns status code 200
         def is_accessible(url):
             try:
-                response = requests.get(url, headers=headers, timeout=10)
+                response = requests.get(url, headers=headers, timeout=25)
                 if response.status_code == 200:
                     return True
             except requests.RequestException:
